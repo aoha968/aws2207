@@ -1,20 +1,21 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Description: Server and DB construction
-  
+AWSTemplateFormatVersion: "2010-09-09"         # テンプレートバージョン
+Description: Server and DB construction        # テンプレートを説明するテキスト
+
+# -------------------------------------------------------------------------#
+# コンソールでパラメータをグループ化およびソートする方法を定義するメタデータキー
+# -------------------------------------------------------------------------# 
 Metadata:
-  # コンソールでパラメータをグループ化およびソートする方法を定義するメタデータキー
   "AWS::CloudFormation::Interface":
+    # -------------------------------------------------------------------------#
     # パラメーターグループとそのグループに含めるパラメーターの定義
+    # -------------------------------------------------------------------------# 
     ParameterGroups: 
-      # Project名に関するグループ
-      - Label: 
+      - Label:                                # Project名に関するグループ
           default: "Project Name Prefix"
         Parameters: 
           - PJPrefix
-      # ネットワーク設定に関するグループ
-      - Label: 
+      - Label:                                # ネットワーク設定に関するグループ
           default: "Network Configuration"
-        # 記述された順番に表示される
         Parameters: 
           - VPCCIDR
           - PublicSubnetCIDR
@@ -22,8 +23,8 @@ Metadata:
           - PrivateSubnet2CIDR
           - MySQLMajorVersion
           - KeyName
-    # パラメーターのラベル
-    ParameterLabels: 
+
+    ParameterLabels:                          # パラメーターのラベル
       VPCCIDR: 
         default: "VPC CIDR"
       PublicSubnetCIDR: 
@@ -35,10 +36,9 @@ Metadata:
       MySQLMajorVersion: 
         default: "MySQL MajorVersion"
 
-
-# ------------------------------------------------------------#
-# Input Parameters
-# ------------------------------------------------------------# 
+# -------------------------------------------------------------------------#
+# Input Parameters(マネジメントコンソールでの指定できる項目)
+# -------------------------------------------------------------------------#
 Parameters:
   PJPrefix:
     Type: String
@@ -75,25 +75,23 @@ Parameters:
     Description: "Enter the database admin accoiunt password in RDS"
   
 Resources: 
-# ------------------------------------------------------------#
-#  VPC
-# ------------------------------------------------------------#
-# VPC Create
+  # -------------------------------------------------------------------------#
+  #  VPC Create
+  # -------------------------------------------------------------------------#
   VPC: 
     Type: "AWS::EC2::VPC"
     Properties:
-      CidrBlock: !Ref VPCCIDR
-      # VPC に対して DNS 解決がサポートされているか
-      EnableDnsSupport: "true"
-      # VPC 内に起動されるインスタンスが DNS ホスト名を取得するか
-      EnableDnsHostnames: "false"
-      # VPC 内に起動されるインスタンスの許可されているテナンシー
-      InstanceTenancy: default
+      CidrBlock: !Ref VPCCIDR                   # VPCのIPv4 ネットワーク範囲 (CIDR 表記)
+      EnableDnsSupport: "true"                  # VPCに対してDNS解決がサポートされているか
+      EnableDnsHostnames: "false"               # VPC内に起動されるインスタンスがDNSホスト名を取得するか
+      InstanceTenancy: default                  # VPC内に起動されるインスタンスの許可されているテナンシー
       Tags: 
         - Key: Name
           Value: !Sub "${PJPrefix}-vpc"
 
-# InternetGateway Create
+  # -------------------------------------------------------------------------#
+  #  InternetGateway Create
+  # -------------------------------------------------------------------------#
   InternetGateway: 
     Type: "AWS::EC2::InternetGateway"
     Properties: 
@@ -101,225 +99,211 @@ Resources:
         - Key: Name
           Value: !Sub "${PJPrefix}-igw"
 
-# IGW Attach
+  # -------------------------------------------------------------------------#
+  #  InternetGateway Attach
+  # -------------------------------------------------------------------------#
   InternetGatewayAttachment: 
     Type: "AWS::EC2::VPCGatewayAttachment"
     Properties: 
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC 
 
-# ------------------------------------------------------------#
-#  Subnet
-# ------------------------------------------------------------#          
-# Public Subnet Create
+  # -------------------------------------------------------------------------#
+  #  Public Subnet Create
+  # -------------------------------------------------------------------------#
   PublicSubnet: 
     Type: "AWS::EC2::Subnet"
     Properties: 
-      AvailabilityZone: !Sub ${AWS::Region}a
-      CidrBlock: !Ref PublicSubnetCIDR
-      VpcId: !Ref VPC 
+      AvailabilityZone: !Sub ${AWS::Region}a           # サブネットのアベイラビリティーゾーン
+      CidrBlock: !Ref PublicSubnetCIDR                 # サブネットに割り当てられた IPv4 CIDR ブロック
+      VpcId: !Ref VPC                                  # サブネットがあるVPCのID
       Tags: 
         - Key: Name
           Value: !Sub "${PJPrefix}-public-subnet"
-                    
-# Private Subnet Create
+
+  # -------------------------------------------------------------------------#
+  #  Private Subnet Create
+  # -------------------------------------------------------------------------#
   PrivateSubnet1: 
     Type: "AWS::EC2::Subnet"
     Properties: 
-      AvailabilityZone: !Sub ${AWS::Region}a
-      CidrBlock: !Ref PrivateSubnet1CIDR
-      VpcId: !Ref VPC 
+      AvailabilityZone: !Sub ${AWS::Region}a          # サブネットのアベイラビリティーゾーン
+      CidrBlock: !Ref PrivateSubnet1CIDR              # サブネットに割り当てられた IPv4 CIDR ブロック
+      VpcId: !Ref VPC                                 # サブネットがあるVPCのID
       Tags: 
         - Key: Name
           Value: !Sub "${PJPrefix}-private-subnet1"
+
   PrivateSubnet2: 
     Type: "AWS::EC2::Subnet"
     Properties: 
-      AvailabilityZone: !Sub ${AWS::Region}c
-      CidrBlock: !Ref PrivateSubnet2CIDR
-      VpcId: !Ref VPC 
+      AvailabilityZone: !Sub ${AWS::Region}c          # サブネットのアベイラビリティーゾーン
+      CidrBlock: !Ref PrivateSubnet2CIDR              # サブネットに割り当てられた IPv4 CIDR ブロック
+      VpcId: !Ref VPC                                 # サブネットがあるVPCのID
       Tags: 
         - Key: Name
           Value: !Sub "${PJPrefix}-private-subnet2"
-# ------------------------------------------------------------#
-#  RouteTable
-# ------------------------------------------------------------#          
-# Public RouteTable Create
+
+  # -------------------------------------------------------------------------#
+  #  RouteTable Create
+  # -------------------------------------------------------------------------#
   PublicRouteTable: 
     Type: "AWS::EC2::RouteTable"
     Properties: 
-      VpcId: !Ref VPC 
+      VpcId: !Ref VPC                                # VPCのID
       Tags: 
         - Key: Name
           Value: !Sub "${PJPrefix}-public-route"
 
-# ------------------------------------------------------------#
-# Routing
-# ------------------------------------------------------------# 
-# PublicRoute Create
+  # -------------------------------------------------------------------------#
+  #  Route Create
+  # -------------------------------------------------------------------------#
   PublicRoute: 
     Type: "AWS::EC2::Route"
     Properties: 
-      RouteTableId: !Ref PublicRouteTable 
-      DestinationCidrBlock: "0.0.0.0/0"
-      GatewayId: !Ref InternetGateway 
+      RouteTableId: !Ref PublicRouteTable           # ルートテーブルのID。ルーティング テーブルは、仮想プライベート ゲートウェイが接続されているのと同じVPCに関連付ける必要があります。
+      DestinationCidrBlock: "0.0.0.0/0"             # 宛先の一致に使用される IPv4 CIDR ブロック
+      GatewayId: !Ref InternetGateway               # VPCにアタッチされたインターネット ゲートウェイ または 仮想プライベート ゲートウェイのID
 
-# ------------------------------------------------------------#
-# RouteTable Associate
-# ------------------------------------------------------------# 
-# PublicRouteTable Associate PublicSubnet
+  # -------------------------------------------------------------------------#
+  #  RouteTable Associate PublicSubnet
+  # -------------------------------------------------------------------------#
   PublicSubnetRouteTableAssociation: 
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties: 
-      SubnetId: !Ref PublicSubnet
-      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet                   # サブネットのID
+      RouteTableId: !Ref PublicRouteTable           # ルート テーブルのID
 
-# ------------------------------------------------------------#
-#  ElasticIP
-# ------------------------------------------------------------#
+  # -------------------------------------------------------------------------#
+  #  ElasticIP Create and Associate
+  # -------------------------------------------------------------------------#
   ElasticIP: 
     Type: "AWS::EC2::EIP"
     Properties: 
-      Domain: vpc
+      Domain: vpc                                   # Elastic IP アドレスが VPC のインスタンスまたは EC2-Classic のインスタンスで使用されるかどうか
   ElasticIPAssociate:
     Type: AWS::EC2::EIPAssociation
     Properties: 
-      AllocationId: !GetAtt ElasticIP.AllocationId
-      InstanceId: !Ref WebServer
-# ------------------------------------------------------------#
-# EC2
-# ------------------------------------------------------------# 
-  # WebServerインスタンス
+      AllocationId: !GetAtt ElasticIP.AllocationId  # [EC2-VPC] 割り当てID
+      InstanceId: !Ref WebServer                    # インスタンスのID
+
+  # -------------------------------------------------------------------------#
+  #  EC2 Instance Create
+  # -------------------------------------------------------------------------#
   WebServer: 
     Type: AWS::EC2::Instance
     Properties: 
-      ImageId: ami-0f36dcfcc94112ea1
-      KeyName: !Ref KeyName
-      InstanceType: t2.micro
-      # 属するサブネット
-      SubnetId: !Ref PublicSubnet
-      # 属するセキュリティグループ
-      SecurityGroupIds:
+      ImageId: ami-0f36dcfcc94112ea1                # AMIのID
+      KeyName: !Ref KeyName                         # キーペアの名前
+      InstanceType: t2.micro                        # インスタンスタイプ
+      SubnetId: !Ref PublicSubnet                   # 属するサブネット
+      SecurityGroupIds:                             # 属するセキュリティグループ
         - !Ref WebServerSecurityGroup
-      # インスタンスの作成時に実行するコマンドなどを記述
-      UserData: !Base64 |
+      UserData: !Base64 |                           # インスタンスの作成時に実行するコマンドなどを記述
         #!/bin/bash
         sudo yum -y update
         sudo yum -y install mysql
         sudo yum -y install httpd
         sudo systemctl start httpd.service
         sudo systemctl enable httpd.service
-
       Tags:
           - Key: Name
             Value: !Sub "${PJPrefix}-web-server"
 
-  # WebServerセキュリティグループ
+  # -------------------------------------------------------------------------#
+  #  SecurityGroup Create for EC2
+  # -------------------------------------------------------------------------#
   WebServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: web-sg-cf
-      GroupDescription: web server sg
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        # ssh
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
+      GroupName: web-sg-cf                          # セキュリティグループの名前
+      GroupDescription: web server sg               # セキュリティグループの説明
+      VpcId: !Ref VPC                               # セキュリティグループのVPCのID
+      SecurityGroupIngress:   # SSH and HTTP
+        - IpProtocol: tcp                           # IPプロトコル名 (tcp、udp、icmp、icmpv6) または番号
+          FromPort: 22                              # TCP および UDP プロトコルのポート範囲の開始、または ICMP/ICMPv6 タイプ番号
+          ToPort: 22                                # TCP および UDP プロトコルのポート範囲の終了、または ICMP/ICMPv6 コード
+          CidrIp: 0.0.0.0/0                         # CIDR 形式の IPv4 アドレス範囲
+        - IpProtocol: tcp                           # IPプロトコル名 (tcp、udp、icmp、icmpv6) または番号
+          FromPort: 80                              # TCP および UDP プロトコルのポート範囲の開始、または ICMP/ICMPv6 タイプ番号
+          ToPort: 80                                # TCP および UDP プロトコルのポート範囲の終了、または ICMP/ICMPv6 コード
+          CidrIp: 0.0.0.0/0                         # CIDR 形式の IPv4 アドレス範囲
       Tags:
         - Key: Name
           Value: !Sub "${PJPrefix}-web-server-sg"
 
-  # # ------------------------------------------------------------#
-  # #  DBInstance MySQL
-  # # ------------------------------------------------------------#
+  # -------------------------------------------------------------------------#
+  #  RDS Instance MySQL Create
+  # -------------------------------------------------------------------------#
   DBInstance: 
     Type: "AWS::RDS::DBInstance"
     Properties: 
       DBInstanceIdentifier: !Sub "${PJPrefix}-db-instance"
-      Engine: MySQL
-      # version
-      EngineVersion: !Ref MySQLMajorVersion
-      # DB インスタンスのコンピューティング性能とメモリ容量 (例: db.m4.large)
-      DBInstanceClass: "db.t2.micro"
-      # データベースインスタンスに最初に割り当てるストレージの容量
-      AllocatedStorage: "20"
-      # スレレージタイプ
-      StorageType: "gp2"  # ssd
-      DBName: !Sub "${PJPrefix}_db"
-      MasterUsername: "admin"
-      MasterUserPassword: !Ref RDSDBPwd
-      DBSubnetGroupName: !Ref DBSubnetGroup
-      # DB インスタンスがインターネットに接するインスタンスかどうかを示します
-      PubliclyAccessible: false
-      # データベースインスタンスが複数のアベイラビリティーゾーンに配置されているかどうか
-      MultiAZ: false
-      # 自動バックアップが有効になっている場合に、自動バックアップが作成される毎日の時間範囲
-      PreferredBackupWindow: "18:00-18:30"
-      # 週 1 回のシステムメンテナンスを実行できる時間帯、世界標準時 (UTC)。
-      PreferredMaintenanceWindow: "sat:19:00-sat:19:30"
-      AvailabilityZone: !Sub ${AWS::Region}a
-      # マイナーバージョン自動アップグレードの有効化
-      AutoMinorVersionUpgrade: false
-      VPCSecurityGroups:
+      Engine: MySQL                                         # この DBインスタンスに使用するデータベース エンジンの名前
+      EngineVersion: !Ref MySQLMajorVersion                 # 使用するデータベース エンジンのバージョン番号
+      DBInstanceClass: "db.t2.micro"                        # DBインスタンスのコンピューティングおよびメモリ容量
+      AllocatedStorage: "20"                                # データベース インスタンスに最初に割り当てられるギビバイト (GiB) 単位のストレージの量
+      StorageType: "gp2"                                    # DBインスタンスに関連付けるストレージタイプ
+      DBName: !Sub "${PJPrefix}_db"                         # 使用するデータベースエンジン
+      MasterUsername: "admin"                               # DBインスタンスのマスターユーザー名
+      MasterUserPassword: !Ref RDSDBPwd                     # マスターユーザーのパスワード
+      DBSubnetGroupName: !Ref DBSubnetGroup                 # DB インスタンスに関連付ける DBサブネットグループ
+      PubliclyAccessible: false                             # DBインスタンスがインターネットに接するインスタンスかどうか
+      MultiAZ: false                                        # データベースインスタンスが複数のアベイラビリティーゾーンに配置されているかどうか
+      PreferredBackupWindow: "18:00-18:30"                  # 自動バックアップが有効になっている場合に、自動バックアップが作成される毎日の時間範囲
+      PreferredMaintenanceWindow: "sat:19:00-sat:19:30"     # 週1回のシステムメンテナンスを実行できる時間帯、世界標準時 (UTC)
+      AvailabilityZone: !Sub ${AWS::Region}a                # データベースが作成されるアベイラビリティーゾーン (AZ)
+      AutoMinorVersionUpgrade: false                        # マイナーバージョン自動アップグレードの有効化
+      VPCSecurityGroups:                                    # DBインスタンスに割り当てる VPC セキュリティグループ 
         - !Ref RDSSecurityGroup
-      # タグを DB インスタンスから DB インスタンスのスナップショットにコピーするかどうか
-      CopyTagsToSnapshot: false
-      # 自動バックアップを保管する日数 0だと自動バックアップ無効
-      BackupRetentionPeriod: 7
+      CopyTagsToSnapshot: false                             # DB インスタンスから DB インスタンスのスナップショットにタグをコピーするかどうか
+      BackupRetentionPeriod: 0                              # 自動バックアップを保管する日数。0だと自動バックアップ無効
       Tags: 
         - Key: "Name"
           Value: !Sub "${PJPrefix}-db"
-    DeletionPolicy: "Delete"
+    DeletionPolicy: "Delete"                                # スタックが削除された時にDBインスタンスを削除するかどうか
 
-  # # ------------------------------------------------------------#
-  # #  RDSSecurityGroup
-  # # ------------------------------------------------------------#
+  # -------------------------------------------------------------------------#
+  #  SecurityGroup Create for RDS
+  # -------------------------------------------------------------------------#
   RDSSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
-      VpcId: !Ref VPC
-      GroupName: !Sub "${PJPrefix}-db-sg"
-      GroupDescription: "-"
+      VpcId: !Ref VPC                                       # セキュリティグループのVPCのID
+      GroupName: !Sub "${PJPrefix}-db-sg"                   # セキュリティグループの名前
+      GroupDescription: "-"                                 # セキュリティグループの説明
       Tags:
         - Key: "Name"
           Value: !Sub "${PJPrefix}-db-sg"
-  # Rule
+
   RDSSecurityGroupIngress: 
     Type: "AWS::EC2::SecurityGroupIngress"
     Properties: 
-      IpProtocol: tcp
-      FromPort: 3306
-      ToPort: 3306
-      # 許可するセキュリティグループ
-      SourceSecurityGroupId: !GetAtt [ WebServerSecurityGroup, GroupId ]
-      # 紐付けるセキュリティグループ
-      GroupId: !GetAtt [ RDSSecurityGroup, GroupId ]
+      IpProtocol: tcp                                                       # IPプロトコル名 (tcp、udp、icmp、icmpv6) または番号
+      FromPort: 3306                                                        # TCP および UDP プロトコルのポート範囲の開始、または ICMP/ICMPv6 タイプ番号
+      ToPort: 3306                                                          # TCP および UDP プロトコルのポート範囲の終了、または ICMP/ICMPv6 コード
+      SourceSecurityGroupId: !GetAtt [ WebServerSecurityGroup, GroupId ]    # 許可するセキュリティグループ(EC2 セキュリティグループのID)
+      GroupId: !GetAtt [ RDSSecurityGroup, GroupId ]                        # 紐付けるセキュリティグループ
 
-  # # ------------------------------------------------------------#
-  # #  DBSubnetGroup
-  # # ------------------------------------------------------------#
+  # -------------------------------------------------------------------------#
+  #  DB Subnet Group Create
+  # -------------------------------------------------------------------------#
   DBSubnetGroup: 
     Type: "AWS::RDS::DBSubnetGroup"
     Properties: 
-      DBSubnetGroupName: !Sub "${PJPrefix}-db-subnet"
-      # サブネットグループの説明
-      DBSubnetGroupDescription: "-"
-      # 紐づけるサブネット(2こ以上)
-      SubnetIds: 
+      DBSubnetGroupName: !Sub "${PJPrefix}-db-subnet"       # DBサブネットグループの名前
+      DBSubnetGroupDescription: "-"                         # DBサブネットグループの説明
+      SubnetIds:                                            # 紐づけるサブネット(2つ以上)
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
 
-# # # ------------------------------------------------------------#
-# # # Output Parameters
-# # # ------------------------------------------------------------#                
+# -------------------------------------------------------------------------#
+#  Output Parameters
+# -------------------------------------------------------------------------#
 Outputs:
-# VPC
+  # -------------------------------------------------------------------------#
+  #  VPC
+  # -------------------------------------------------------------------------#
   VPC:
     Value: !Ref VPC
     Export:
@@ -330,7 +314,9 @@ Outputs:
     Export:
       Name: !Sub "${PJPrefix}-vpc-cidr"
 
-# Subnet
+  # -------------------------------------------------------------------------#
+  #  Subnet
+  # -------------------------------------------------------------------------#
   PublicSubnet:
     Value: !Ref PublicSubnet
     Export:
@@ -361,18 +347,25 @@ Outputs:
     Export:
       Name: !Sub "${PJPrefix}-private-subnet2-cidr"
 
-# Route
+  # -------------------------------------------------------------------------#
+  #  Route
+  # -------------------------------------------------------------------------#
   PublicRouteTable:
     Value: !Ref PublicRouteTable
     Export:
       Name: !Sub "${PJPrefix}-public-route"
 
-# EC2
+  # -------------------------------------------------------------------------#
+  #  EC2
+  # -------------------------------------------------------------------------#
   WebServer:
     Value: !Ref WebServer
     Export:
       Name: !Sub "${PJPrefix}-web-server"
-# RDS
+
+  # -------------------------------------------------------------------------#
+  #  RDS
+  # -------------------------------------------------------------------------#
   DBInstance:
     Value: !Ref DBInstance
     Export:
